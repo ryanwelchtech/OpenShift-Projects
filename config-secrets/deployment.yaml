@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: config-secrets
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: config-secrets
+  template:
+    metadata:
+      labels:
+        app: config-secrets
+    spec:
+      containers:
+        - name: app
+          image: IMAGE_HERE
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: app-config
+            - secretRef:
+                name: app-secret
+          env:
+            - name: API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: app-secret
+                  key: API_KEY
+          volumeMounts:
+            - name: secret-vol
+              mountPath: /var/run/secret
+              readOnly: true
+      volumes:
+        - name: secret-vol
+          secret:
+            secretName: app-secret
+            items:
+              - key: API_KEY
+                path: api_key
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: config-secrets
+spec:
+  selector:
+    app: config-secrets
+  ports:
+    - port: 80
+      targetPort: 8080
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: config-secrets
+spec:
+  to:
+    kind: Service
+    name: config-secrets
+  port:
+    targetPort: 80
